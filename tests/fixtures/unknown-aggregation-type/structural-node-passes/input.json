@@ -1,0 +1,1 @@
+{ "aggs": { "everything": { "global": {}, "aggs": { "by_status": { "terms": { "field": "status" } } } } } }

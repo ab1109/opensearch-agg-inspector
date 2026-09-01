@@ -1,0 +1,1 @@
+{ "aggs": { "by_script": { "terms": { "script": "doc['price'].value * 2" } } } }

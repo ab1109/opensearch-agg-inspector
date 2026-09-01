@@ -1,0 +1,1 @@
+[{ "rule": "unknown-aggregation-type", "severity": "warning", "path": "aggs.by_status" }]

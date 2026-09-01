@@ -1,0 +1,7 @@
+[
+  {
+    "rule": "missing-shard-size",
+    "severity": "warning",
+    "path": "aggs.by_tag"
+  }
+]

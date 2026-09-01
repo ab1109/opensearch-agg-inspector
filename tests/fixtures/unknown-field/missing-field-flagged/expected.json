@@ -1,0 +1,7 @@
+[
+  {
+    "rule": "unknown-field",
+    "severity": "warning",
+    "path": "aggs.by_region"
+  }
+]

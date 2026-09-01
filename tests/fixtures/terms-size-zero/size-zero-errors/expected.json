@@ -1,0 +1,1 @@
+[{ "rule": "terms-size-zero", "severity": "error", "path": "aggs.all_tags" }]

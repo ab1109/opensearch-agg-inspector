@@ -1,0 +1,7 @@
+[
+  {
+    "rule": "large-terms-size",
+    "severity": "warning",
+    "path": "aggs.by_tag"
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "rule": "prefer-keyword",
+    "severity": "error",
+    "path": "aggs.by_country",
+    "fixable": true
+  }
+]

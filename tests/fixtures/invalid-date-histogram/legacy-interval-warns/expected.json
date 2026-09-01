@@ -1,0 +1,8 @@
+[
+  {
+    "rule": "invalid-date-histogram",
+    "severity": "warning",
+    "path": "aggs.over_time",
+    "fixable": true
+  }
+]

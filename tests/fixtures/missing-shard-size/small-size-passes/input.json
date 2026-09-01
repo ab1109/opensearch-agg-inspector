@@ -1,0 +1,1 @@
+{ "aggs": { "by_tag": { "terms": { "field": "tag", "size": 10 } } } }

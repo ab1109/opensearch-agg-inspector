@@ -1,0 +1,8 @@
+{
+  "country": {
+    "type": "text",
+    "fields": { "keyword": { "type": "keyword" } }
+  },
+  "created_at": { "type": "date" },
+  "price": { "type": "double" }
+}

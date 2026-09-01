@@ -1,0 +1,8 @@
+{
+  "aggs": {
+    "avg_price": {
+      "avg": { "field": "price" },
+      "aggs": { "by_status": { "terms": { "field": "status" } } }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{ "aggs": { "over_time": { "date_histogram": { "field": "created_at", "calendar_interval": "1d" } } } }

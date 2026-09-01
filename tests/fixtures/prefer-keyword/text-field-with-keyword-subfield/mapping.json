@@ -1,0 +1,6 @@
+{
+  "country": {
+    "type": "text",
+    "fields": { "keyword": { "type": "keyword" } }
+  }
+}

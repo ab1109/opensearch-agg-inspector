@@ -1,0 +1,1 @@
+{ "aggs": { "grid": { "geohash_grid": { "field": "location", "precision": 5 } } } }

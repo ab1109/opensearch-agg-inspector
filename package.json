@@ -1,0 +1,79 @@
+{
+  "name": "opensearch-agg-inspector",
+  "version": "0.1.0",
+  "description": "Static analysis / linter for OpenSearch and Elasticsearch aggregation DSL — finds correctness, performance, and best-practice issues without running the query.",
+  "keywords": [
+    "opensearch",
+    "elasticsearch",
+    "aggregation",
+    "aggs",
+    "linter",
+    "lint",
+    "static-analysis",
+    "query",
+    "dsl",
+    "cli"
+  ],
+  "homepage": "https://github.com/ab1109/opensearch-agg-inspector#readme",
+  "bugs": {
+    "url": "https://github.com/ab1109/opensearch-agg-inspector/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ab1109/opensearch-agg-inspector.git"
+  },
+  "license": "MIT",
+  "author": "anagha2610@gmail.com",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "opensearch-agg-inspector": "./dist/cli.js",
+    "osaggs": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "examples",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "packageManager": "npm@10.8.2",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check . && tsc --noEmit",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "prettier": "^3.3.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

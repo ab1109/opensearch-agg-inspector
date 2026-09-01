@@ -1,0 +1,16 @@
+{
+  "aggs": {
+    "by_country": {
+      "terms": { "field": "country", "size": 5000 }
+    },
+    "over_time": {
+      "date_histogram": { "field": "created_at" }
+    },
+    "avg_price": {
+      "avg": { "field": "price" },
+      "aggs": {
+        "by_status": { "terms": { "field": "status" } }
+      }
+    }
+  }
+}

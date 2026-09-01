@@ -1,0 +1,7 @@
+[
+  {
+    "rule": "invalid-date-histogram",
+    "severity": "error",
+    "path": "aggs.over_time"
+  }
+]
