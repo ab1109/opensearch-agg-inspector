@@ -20,9 +20,10 @@ Initial release.
   a dependency-free position-tracking JSON parser.
 - Per-rule severity overrides (`ruleOverrides`, including `"off"`) and custom
   rule sets.
-- CLI (`opensearch-agg-inspector` / `osaggs`) with `pretty` and `json` output,
-  `--mapping`, repeatable `--rule-override`, and a CI-friendly exit code. The
-  pretty output prefixes each issue with a clickable `file:line:col`.
+- CLI (`opensearch-agg-inspector` / `osaggs`): lints one or many query files
+  (shell globs work), `pretty` and `json` output, `--mapping`, repeatable
+  `--rule-override`, CI-friendly exit code. The pretty output prefixes each
+  issue with a clickable `file:line:col`.
 - Mapping helpers `resolveField` / `hasKeywordForm` that understand both
   `properties` (object sub-fields) and `fields` (multi-fields).
 - Dual ESM + CommonJS builds with TypeScript declarations.

@@ -3,7 +3,7 @@
  * opensearch-agg-inspector CLI
  *
  * Usage:
- *   opensearch-agg-inspector <query.json> [options]
+ *   opensearch-agg-inspector <query.json...> [options]
  *
  * Options:
  *   -m, --mapping <file>            index mapping JSON (unlocks field-aware rules)
@@ -19,7 +19,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { inspect } from "./index.js";
-import type { Mapping, RuleSeverityOverride } from "./index.js";
+import type { InspectReport, Mapping, RuleSeverityOverride } from "./index.js";
 
 const { version } = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8")
@@ -39,7 +39,7 @@ const c = {
 const HELP = `${c.bold("opensearch-agg-inspector")} — lint OpenSearch/Elasticsearch aggregation DSL
 
 ${c.bold("Usage:")}
-  opensearch-agg-inspector <query.json> [options]
+  opensearch-agg-inspector <query.json...> [options]
 
 ${c.bold("Options:")}
   -m, --mapping <file>          index mapping JSON (unlocks field-aware rules)
@@ -50,6 +50,7 @@ ${c.bold("Options:")}
 
 ${c.bold("Examples:")}
   opensearch-agg-inspector query.json
+  opensearch-agg-inspector queries/*.json -m mapping.json
   opensearch-agg-inspector query.json -m mapping.json -f json
   opensearch-agg-inspector query.json -r large-terms-size=off -r prefer-keyword=warning`;
 
@@ -91,13 +92,10 @@ if (values.version) {
   process.exit(0);
 }
 
-const queryFile = positionals[0];
-if (!queryFile) {
+const queryFiles = positionals;
+if (queryFiles.length === 0) {
   console.error(HELP);
   process.exit(1);
-}
-if (positionals.length > 1) {
-  fail(`unexpected extra argument "${positionals[1]}" (did you forget a flag?)`);
 }
 
 const format = values.format;
@@ -124,9 +122,6 @@ function loadJson<T>(filePath: string, label: string): T {
   }
 }
 
-// Read the query as raw text and let inspect() parse it, so every issue carries
-// a source location.
-const querySource = readFile(queryFile, "query");
 const mapping: Mapping | undefined = values.mapping
   ? loadJson<Mapping>(values.mapping, "mapping")
   : undefined;
@@ -145,68 +140,107 @@ for (const flag of values["rule-override"]) {
   ruleOverrides[id] = severity as RuleSeverityOverride;
 }
 
-let report: ReturnType<typeof inspect>;
-try {
-  report = inspect(querySource, mapping, { ruleOverrides });
-} catch (err) {
-  fail(
-    `query file is not valid JSON: ${resolve(queryFile)}\n  ${(err as Error).message}`
-  );
+// Lint each file. Read as raw text so every issue carries a source location.
+interface FileResult {
+  file: string;
+  report?: InspectReport;
+  error?: string;
 }
+
+const results: FileResult[] = queryFiles.map((file) => {
+  const source = readFile(file, "query");
+  try {
+    return { file, report: inspect(source, mapping, { ruleOverrides }) };
+  } catch (err) {
+    return { file, error: (err as Error).message };
+  }
+});
 
 if (format === "json") {
-  console.log(JSON.stringify(report, null, 2));
-  process.exit(report.errorCount > 0 ? 1 : 0);
+  const payload =
+    results.length === 1 && results[0]!.report
+      ? results[0]!.report
+      : results.map((r) => ({ file: r.file, ...(r.report ?? { error: r.error }) }));
+  console.log(JSON.stringify(payload, null, 2));
+  process.exit(exitCode());
 }
 
-if (report.issues.length === 0) {
-  console.log(`${c.green("✓")} ${report.summary}`);
-  if (report.passedRules.length > 0) {
-    console.log(c.dim(`  passed: ${report.passedRules.join(", ")}`));
+// ── pretty ──────────────────────────────────────────────────────────────────
+let totalErrors = 0;
+let totalWarnings = 0;
+let totalInfo = 0;
+let totalAggs = 0;
+
+for (const { file, report, error } of results) {
+  if (error) {
+    console.log(`${c.red("✖")} ${c.bold(file)}  ${c.red("could not be parsed")}`);
+    console.log(`  ${error}\n`);
+    continue;
   }
-  process.exit(0);
+  if (!report) continue;
+
+  totalErrors += report.errorCount;
+  totalWarnings += report.warningCount;
+  totalInfo += report.infoCount;
+  totalAggs += report.aggCount;
+
+  if (report.issues.length === 0) {
+    console.log(`${c.green("✓")} ${c.bold(file)}  ${c.dim(report.summary)}`);
+    continue;
+  }
+
+  for (const issue of report.issues) {
+    const icon =
+      issue.severity === "error"
+        ? c.red("✖")
+        : issue.severity === "warning"
+          ? c.yellow("⚠")
+          : c.cyan("ℹ");
+    const label =
+      issue.severity === "error"
+        ? c.red("error")
+        : issue.severity === "warning"
+          ? c.yellow("warning")
+          : c.cyan("info");
+
+    // `file:line:col` — clickable in most terminals; falls back to the dot-path.
+    const where = issue.loc
+      ? `${file}:${issue.loc.line}:${issue.loc.column}`
+      : `${file} (${issue.path})`;
+
+    console.log(`${icon} ${c.bold(where)}  ${label}  ${c.dim(issue.rule)}`);
+    console.log(`  ${issue.message}`);
+    if (issue.suggestion) console.log(c.dim(`  → ${issue.suggestion}`));
+    if (issue.docsUrl) console.log(c.dim(`  ${issue.docsUrl}`));
+    console.log();
+  }
 }
 
-for (const issue of report.issues) {
-  const icon =
-    issue.severity === "error"
-      ? c.red("✖")
-      : issue.severity === "warning"
-        ? c.yellow("⚠")
-        : c.cyan("ℹ");
-  const label =
-    issue.severity === "error"
-      ? c.red("error")
-      : issue.severity === "warning"
-        ? c.yellow("warning")
-        : c.cyan("info");
-
-  // `file:line:col` — clickable in most terminals; falls back to the dot-path.
-  const where = issue.loc
-    ? `${queryFile}:${issue.loc.line}:${issue.loc.column}`
-    : `${queryFile} (${issue.path})`;
-
-  console.log(`${icon} ${c.bold(where)}  ${label}  ${c.dim(issue.rule)}`);
-  console.log(`  ${issue.message}`);
-  if (issue.suggestion) console.log(c.dim(`  → ${issue.suggestion}`));
-  if (issue.docsUrl) console.log(c.dim(`  ${issue.docsUrl}`));
-  console.log();
-}
-
+const parseFailures = results.filter((r) => r.error).length;
 const parts: string[] = [];
-if (report.errorCount)
+if (totalErrors)
+  parts.push(c.red(c.bold(`${totalErrors} error${totalErrors !== 1 ? "s" : ""}`)));
+if (totalWarnings)
   parts.push(
-    c.red(c.bold(`${report.errorCount} error${report.errorCount !== 1 ? "s" : ""}`))
+    c.yellow(c.bold(`${totalWarnings} warning${totalWarnings !== 1 ? "s" : ""}`))
   );
-if (report.warningCount)
-  parts.push(
-    c.yellow(
-      c.bold(`${report.warningCount} warning${report.warningCount !== 1 ? "s" : ""}`)
-    )
-  );
-if (report.infoCount) parts.push(c.cyan(`${report.infoCount} info`));
-console.log(
-  `${parts.join(", ")} across ${report.aggCount} aggregation${report.aggCount !== 1 ? "s" : ""}`
-);
+if (totalInfo) parts.push(c.cyan(`${totalInfo} info`));
 
-process.exit(report.errorCount > 0 ? 1 : 0);
+const scope =
+  queryFiles.length === 1
+    ? `${totalAggs} aggregation${totalAggs !== 1 ? "s" : ""}`
+    : `${totalAggs} aggregation${totalAggs !== 1 ? "s" : ""} in ${queryFiles.length} files`;
+
+if (parts.length === 0 && parseFailures === 0) {
+  console.log(`${c.green("✓")} no issues across ${scope}`);
+} else {
+  if (parts.length) console.log(`${parts.join(", ")} across ${scope}`);
+  if (parseFailures) console.log(c.red(`${parseFailures} file(s) failed to parse`));
+}
+
+process.exit(exitCode());
+
+function exitCode(): number {
+  const anyErrors = results.some((r) => r.error || (r.report?.errorCount ?? 0) > 0);
+  return anyErrors ? 1 : 0;
+}
