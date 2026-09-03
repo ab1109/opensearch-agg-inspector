@@ -23,11 +23,14 @@ export {
   PIPELINE_AGG_TYPES,
 } from "./aggTypes.js";
 export { DOCS_BASE, docsUrl } from "./docs.js";
+export { parseJsonWithLocs } from "./locate.js";
+export type { ParseResult } from "./locate.js";
 
 export type {
   Rule,
   RuleState,
   Issue,
+  Loc,
   Severity,
   RuleContext,
   Mapping,

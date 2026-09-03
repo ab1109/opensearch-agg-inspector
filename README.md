@@ -50,13 +50,26 @@ report.issues[0];
 `mapping` is optional. Without it, the field-aware rules (`prefer-keyword`,
 `unknown-field`) simply don't run — everything else still does.
 
+### Source locations
+
+Pass the **raw JSON string** instead of a parsed object and every issue also
+carries a `loc` (`{ line, column, offset }`, 1-based line/column) pointing at
+the offending aggregation:
+
+```ts
+import { readFileSync } from "node:fs";
+
+const report = inspect(readFileSync("query.json", "utf8"), mapping);
+report.issues[0].loc; // { line: 4, column: 5, offset: 31 }
+```
+
 ### `inspect(query, mapping?, options?)`
 
-| argument  | type                            | notes                                             |
-| --------- | ------------------------------- | ------------------------------------------------- |
-| `query`   | `{ aggs }` / `{ aggregations }` | the object you'd send in a `_search` request body |
-| `mapping` | `Record<string, MappingField>`  | flat map of field name → mapping definition       |
-| `options` | `InspectOptions`                | `rules` (custom rule set), `ruleOverrides`        |
+| argument  | type                                                               | notes                                                                              |
+| --------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `query`   | `{ aggs }` / `{ aggregations }` object, **or** the raw JSON string | an object you'd send in a `_search` body; a string additionally yields `issue.loc` |
+| `mapping` | `Record<string, MappingField>`                                     | flat map of field name → mapping definition                                        |
+| `options` | `InspectOptions`                                                   | `rules` (custom rule set), `ruleOverrides`                                         |
 
 Returns an `InspectReport`:
 
@@ -105,12 +118,19 @@ npx opensearch-agg-inspector query.json --mapping mapping.json
 ```
 
 ```
-  ✖ aggs.by_country          error    Field "country" is a text field ...  prefer-keyword
-     → Change field to "country.keyword"
-  ⚠ aggs.by_country          warning  terms aggregation ... has size=5000 ...  large-terms-size
+✖ query.json:4:5  error  prefer-keyword
+  Field "country" is a text field and cannot be aggregated on reliably. Use "country.keyword" instead.
+  → Change field to "country.keyword"
+  https://github.com/ab1109/opensearch-agg-inspector/blob/main/docs/rules/prefer-keyword.md
+
+⚠ query.json:4:5  warning  large-terms-size
+  terms aggregation at "aggs.by_country" has size=5000, which is above the threshold of 1000. ...
 
 1 error, 1 warning across 1 aggregation
 ```
+
+Each issue is prefixed with `file:line:col`, which most terminals (VS Code,
+iTerm2, …) turn into a clickable link straight to the aggregation.
 
 | flag                           | description                                                          |
 | ------------------------------ | -------------------------------------------------------------------- |

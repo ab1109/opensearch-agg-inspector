@@ -71,7 +71,55 @@ describe("inspect", () => {
     // @ts-expect-error — exercising the runtime guard
     expect(() => inspect(null)).toThrow(TypeError);
     // @ts-expect-error
-    expect(() => inspect("nope")).toThrow(/expects a query object/);
+    expect(() => inspect(42)).toThrow(/expects a query object/);
+  });
+
+  it("throws a SyntaxError on an invalid JSON string", () => {
+    expect(() => inspect("not json")).toThrow(SyntaxError);
+    expect(() => inspect('{ "aggs": }')).toThrow(/line 1/);
+  });
+});
+
+describe("source locations", () => {
+  const src = `{
+  "aggs": {
+    "by_country": { "terms": { "field": "country" } },
+    "revenue": {
+      "sum": { "field": "amount" },
+      "aggs": { "sub": { "terms": { "field": "status" } } }
+    }
+  }
+}`;
+  const mapping2: Mapping = {
+    country: { type: "text", fields: { keyword: { type: "keyword" } } },
+    amount: { type: "double" },
+    status: { type: "keyword" },
+  };
+
+  it("attaches a loc to each issue when given the raw string", () => {
+    const report = inspect(src, mapping2);
+    const pk = report.issues.find((i) => i.rule === "prefer-keyword");
+    expect(pk?.loc).toEqual({ line: 3, column: 5, offset: expect.any(Number) });
+
+    const metric = report.issues.find((i) => i.rule === "metric-sub-aggregation");
+    // points at the "revenue" key, and the nested `aggs` container is transparent
+    expect(metric?.path).toBe("aggs.revenue");
+    expect(metric?.loc?.line).toBe(4);
+  });
+
+  it("does not attach loc for a parsed-object query", () => {
+    const report = inspect(JSON.parse(src), mapping2);
+    expect(report.issues.every((i) => i.loc === undefined)).toBe(true);
+  });
+
+  it("normalizes 'aggregations' to the 'aggs' path", () => {
+    const report = inspect(
+      '{\n  "aggregations": {\n    "x": { "terms": { "field": "country" } }\n  }\n}',
+      mapping2
+    );
+    const pk = report.issues.find((i) => i.rule === "prefer-keyword");
+    expect(pk?.path).toBe("aggs.x");
+    expect(pk?.loc?.line).toBe(3);
   });
 });
 

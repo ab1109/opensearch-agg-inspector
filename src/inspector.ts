@@ -1,8 +1,10 @@
 import { walk } from "./walker.js";
 import { defaultRules } from "./rules/index.js";
+import { parseJsonWithLocs } from "./locate.js";
 import type {
   AggregationNode,
   Issue,
+  Loc,
   Mapping,
   Rule,
   RuleSeverityOverride,
@@ -39,7 +41,8 @@ export interface InspectReport {
  * report of correctness, performance, and best-practice issues — without ever
  * executing the query.
  *
- * @param query   an object with an `aggs` (or `aggregations`) block
+ * @param query   an object with an `aggs` (or `aggregations`) block — or the
+ *                raw JSON string, in which case every issue also gets a `loc`
  * @param mapping optional index mapping; unlocks the field-aware rules
  * @param options custom rule set and/or per-rule severity overrides
  *
@@ -47,33 +50,56 @@ export interface InspectReport {
  * const report = inspect(query, mapping);
  * if (report.errorCount) console.error(report.summary);
  *
+ * @example — pass the raw string to get line/column on each issue
+ * const report = inspect(fs.readFileSync("query.json", "utf8"), mapping);
+ * report.issues[0].loc; // { line, column, offset }
+ *
  * @example — silence or downgrade a rule
  * inspect(query, mapping, {
  *   ruleOverrides: { "large-terms-size": "warning", "prefer-keyword": "off" },
  * });
  */
 export function inspect(
-  query: AggregationNode,
+  query: AggregationNode | string,
   mapping?: Mapping,
   options: InspectOptions = {}
 ): InspectReport {
   const rules = options.rules ?? defaultRules;
   const overrides = options.ruleOverrides ?? {};
 
-  if (query == null || typeof query !== "object") {
+  let node: AggregationNode;
+  let locs: Map<string, Loc> | undefined;
+  if (typeof query === "string") {
+    const parsed = parseJsonWithLocs(query);
+    node = parsed.value as AggregationNode;
+    locs = parsed.locs;
+  } else {
+    node = query;
+  }
+
+  if (node == null || typeof node !== "object") {
     throw new TypeError(
-      `inspect() expects a query object with an "aggs" block, got ${query === null ? "null" : typeof query}`
+      `inspect() expects a query object (or JSON string) with an "aggs" block, got ${node === null ? "null" : typeof node}`
     );
   }
 
-  const { issues: rawIssues, aggCount } = walk(query, rules, mapping);
+  const { issues: rawIssues, aggCount } = walk(node, rules, mapping);
 
   // Apply per-rule severity overrides; drop issues from rules set to "off".
   const issues: Issue[] = [];
   for (const issue of rawIssues) {
     const override = overrides[issue.rule];
     if (override === "off") continue;
-    issues.push(override ? { ...issue, severity: override as Severity } : issue);
+    const loc = locs?.get(issue.path);
+    const next =
+      override || loc
+        ? {
+            ...issue,
+            ...(override ? { severity: override as Severity } : {}),
+            ...(loc ? { loc } : {}),
+          }
+        : issue;
+    issues.push(next);
   }
 
   const errorCount = issues.filter((i) => i.severity === "error").length;

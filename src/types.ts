@@ -69,6 +69,13 @@ export interface AggregationNode {
 
 export type Severity = "error" | "warning" | "info";
 
+/** A position in the source text. All 1-based except `offset` (0-based). */
+export interface Loc {
+  line: number;
+  column: number;
+  offset: number;
+}
+
 export interface Issue {
   /** Rule id that produced this issue, e.g. "prefer-keyword" */
   rule: string;
@@ -76,6 +83,11 @@ export interface Issue {
   message: string;
   /** Dot path to the offending aggregation, e.g. "aggs.by_country" */
   path: string;
+  /**
+   * Location of the offending aggregation in the source text — only present
+   * when `inspect()` was given the raw JSON string rather than a parsed object.
+   */
+  loc?: Loc;
   /** Short human-readable suggestion, e.g. 'Change field to "country.keyword"' */
   suggestion?: string;
   /** True if the issue can be auto-fixed (reserved for future tooling). */

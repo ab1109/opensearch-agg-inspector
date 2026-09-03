@@ -105,23 +105,28 @@ if (format !== "pretty" && format !== "json") {
   fail(`--format must be "pretty" or "json" (got "${format}")`);
 }
 
-function loadJson<T>(filePath: string, label: string): T {
+function readFile(filePath: string, label: string): string {
   const abs = resolve(filePath);
   if (!existsSync(abs)) fail(`${label} file not found: ${abs}`);
-  let raw: string;
   try {
-    raw = readFileSync(abs, "utf8");
+    return readFileSync(abs, "utf8");
   } catch (err) {
     return fail(`could not read ${label} file: ${(err as Error).message}`);
   }
+}
+
+function loadJson<T>(filePath: string, label: string): T {
+  const raw = readFile(filePath, label);
   try {
     return JSON.parse(raw) as T;
   } catch {
-    return fail(`${label} file is not valid JSON: ${abs}`);
+    return fail(`${label} file is not valid JSON: ${resolve(filePath)}`);
   }
 }
 
-const query = loadJson<Record<string, unknown>>(queryFile, "query");
+// Read the query as raw text and let inspect() parse it, so every issue carries
+// a source location.
+const querySource = readFile(queryFile, "query");
 const mapping: Mapping | undefined = values.mapping
   ? loadJson<Mapping>(values.mapping, "mapping")
   : undefined;
@@ -140,9 +145,14 @@ for (const flag of values["rule-override"]) {
   ruleOverrides[id] = severity as RuleSeverityOverride;
 }
 
-const report = inspect(query as Parameters<typeof inspect>[0], mapping, {
-  ruleOverrides,
-});
+let report: ReturnType<typeof inspect>;
+try {
+  report = inspect(querySource, mapping, { ruleOverrides });
+} catch (err) {
+  fail(
+    `query file is not valid JSON: ${resolve(queryFile)}\n  ${(err as Error).message}`
+  );
+}
 
 if (format === "json") {
   console.log(JSON.stringify(report, null, 2));
@@ -166,19 +176,23 @@ for (const issue of report.issues) {
         : c.cyan("ℹ");
   const label =
     issue.severity === "error"
-      ? c.red("error  ")
+      ? c.red("error")
       : issue.severity === "warning"
         ? c.yellow("warning")
-        : c.cyan("info   ");
+        : c.cyan("info");
 
-  console.log(
-    `  ${icon} ${c.dim(issue.path.padEnd(32))}  ${label}  ${issue.message}  ${c.dim(issue.rule)}`
-  );
-  if (issue.suggestion) console.log(c.dim(`     → ${issue.suggestion}`));
-  if (issue.docsUrl) console.log(c.dim(`       ${issue.docsUrl}`));
+  // `file:line:col` — clickable in most terminals; falls back to the dot-path.
+  const where = issue.loc
+    ? `${queryFile}:${issue.loc.line}:${issue.loc.column}`
+    : `${queryFile} (${issue.path})`;
+
+  console.log(`${icon} ${c.bold(where)}  ${label}  ${c.dim(issue.rule)}`);
+  console.log(`  ${issue.message}`);
+  if (issue.suggestion) console.log(c.dim(`  → ${issue.suggestion}`));
+  if (issue.docsUrl) console.log(c.dim(`  ${issue.docsUrl}`));
+  console.log();
 }
 
-console.log();
 const parts: string[] = [];
 if (report.errorCount)
   parts.push(
