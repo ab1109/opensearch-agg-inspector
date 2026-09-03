@@ -1,5 +1,10 @@
 # opensearch-agg-inspector
 
+[![npm](https://img.shields.io/npm/v/opensearch-agg-inspector.svg)](https://www.npmjs.com/package/opensearch-agg-inspector)
+[![CI](https://github.com/ab1109/opensearch-agg-inspector/actions/workflows/ci.yml/badge.svg)](https://github.com/ab1109/opensearch-agg-inspector/actions/workflows/ci.yml)
+[![node](https://img.shields.io/node/v/opensearch-agg-inspector.svg)](https://www.npmjs.com/package/opensearch-agg-inspector)
+[![license](https://img.shields.io/npm/l/opensearch-agg-inspector.svg)](./LICENSE)
+
 Static analysis / linter for **OpenSearch** and **Elasticsearch** aggregation DSL.
 Point it at an `aggs` block (and, optionally, your index mapping); it reports
 correctness, performance, and best-practice problems — **without ever running the
