@@ -8,7 +8,7 @@ export default defineConfig([
     dts: true,
     clean: true,
     sourcemap: true,
-    target: "node18",
+    target: "node20",
     outExtension: ({ format }) => ({ js: format === "cjs" ? ".cjs" : ".js" }),
   },
   {
@@ -16,7 +16,7 @@ export default defineConfig([
     entry: { cli: "src/cli.ts" },
     format: ["esm"],
     sourcemap: true,
-    target: "node18",
+    target: "node20",
     outExtension: () => ({ js: ".js" }),
   },
 ]);

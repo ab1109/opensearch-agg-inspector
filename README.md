@@ -293,7 +293,7 @@ for a single file, or an array of `{ file, ...report }` for several. Exit code
 ## Compatibility
 
 Targets OpenSearch 1.x+ and Elasticsearch 7.x+ aggregation semantics (the
-post-`interval` era). Requires Node 18.17+.
+post-`interval` era). Requires Node 20+.
 
 ## Contributing
 
